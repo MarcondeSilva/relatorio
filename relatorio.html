@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Pesquisas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d9534f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #d9534f;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .btn {
+            background: #5bc0de;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #31b0d5;
+        }
+        .btn-voltar {
+            background: #d9534f;
+            display: block;
+            width: 200px;
+            margin: 25px auto;
+            padding: 10px;
+            text-align: center;
+        }
+        .detalhes-container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .detalhes-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .detalhes-item:last-child {
+            border-bottom: none;
+        }
+        .hidden {
+            display: none;
+        }
+        .acoes {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-excluir {
+            background: #d9534f;
+        }
+        .btn-excluir:hover {
+            background: #c9302c;
+        }
+        .sem-dados {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+            font-style: italic;
+        }
+        @media (max-width: 768px) {
+            table {
+                font-size: 14px;
+            }
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Pesquisas</h1>
+        
+        <div id="tabela-container">
+            <table id="tabela-pesquisas">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Loja</th>
+                        <th>Data</th>
+                        <th>Hora</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela">
+                    <!-- Dados serão inseridos aqui pelo JavaScript -->
+                </tbody>
+            </table>
+            <div id="sem-dados" class="sem-dados hidden">Nenhuma pesquisa encontrada</div>
+        </div>
+        
+        <div id="detalhes-container" class="detalhes-container hidden">
+            <h2>Detalhes da Pesquisa</h2>
+            <div id="detalhes-conteudo"></div>
+            <button class="btn btn-voltar" onclick="voltarParaTabela()">Voltar para a tabela</button>
+        </div>
+    </div>
+
+    <script>
+        // Carrega os dados quando a página é aberta
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarPesquisas();
+        });
+
+        // Função principal para carregar os dados
+        function carregarPesquisas() {
+            try {
+                // 1. Obter dados do localStorage
+                const dados = JSON.parse(localStorage.getItem('pesquisas')) || [];
+                const corpoTabela = document.getElementById('corpo-tabela');
+                const semDados = document.getElementById('sem-dados');
+                
+                // Limpa a tabela
+                corpoTabela.innerHTML = '';
+                
+                // 2. Verifica se há dados
+                if (dados.length === 0) {
+                    semDados.classList.remove('hidden');
+                    return;
+                } else {
+                    semDados.classList.add('hidden');
+                }
+                
+                // 3. Ordena por data (mais recente primeiro)
+                dados.sort((a, b) => {
+                    const dataA = new Date(a.data.split('/').reverse().join('-'));
+                    const dataB = new Date(b.data.split('/').reverse().join('-'));
+                    return dataB - dataA;
+                });
+                
+                // 4. Preenche a tabela
+                dados.forEach((pesquisa, index) => {
+                    const linha = document.createElement('tr');
+                    
+                    linha.innerHTML = `
+                        <td>${pesquisa.nome || 'Não informado'}</td>
+                        <td>${pesquisa.loja || 'Não informado'}</td>
+                        <td>${pesquisa.data || '--/--/----'}</td>
+                        <td>${pesquisa.hora || '--:--'}</td>
+                        <td class="acoes">
+                            <button class="btn" onclick="mostrarDetalhes(${index})">Ver</button>
+                            <button class="btn btn-excluir" onclick="excluirPesquisa(${index})">Excluir</button>
+                        </td>
+                    `;
+                    
+                    corpoTabela.appendChild(linha);
+                });
+                
+            } catch (error) {
+                console.error('Erro ao carregar pesquisas:', error);
+                document.getElementById('sem-dados').textContent = 'Erro ao carregar os dados';
+                document.getElementById('sem-dados').classList.remove('hidden');
+            }
+        }
+
+        // Mostra os detalhes de uma pesquisa específica
+        function mostrarDetalhes(index) {
+            try {
+                const pesquisas = JSON.parse(localStorage.getItem('pesquisas'));
+                const pesquisa = pesquisas[index];
+                
+                // Formata os detalhes
+                let html = `
+                    <div class="detalhes-item">
+                        <h3>Informações Básicas</h3>
+                        <p><strong>Nome:</strong> ${pesquisa.nome || 'Não informado'}</p>
+                        <p><strong>Loja:</strong> ${pesquisa.loja || 'Não informado'}</p>
+                        <p><strong>Data:</strong> ${pesquisa.data || '--/--/----'} ${pesquisa.hora ? ' às ' + pesquisa.hora : ''}</p>
+                    </div>
+                    
+                    <div class="detalhes-item">
+                        <h3>Respostas</h3>
+                        <p><strong>1. Respeitado no trabalho:</strong> ${pesquisa.respostas.respeito_valorizado || '-'}</p>
+                        <p><strong>2. Recursos adequados:</strong> ${pesquisa.respostas.recursos_apoio || '-'}</p>
+                        <p><strong>3. Comportamentos inapropriados:</strong> ${pesquisa.respostas.comportamentos_inapropriados || '-'}</p>
+                        <p><strong>4. Sofreu assédio:</strong> ${pesquisa.respostas.assedio_moral || '-'}</p>
+                        <p><strong>5. Satisfação salarial:</strong> ${pesquisa.respostas.satisfacao_salarial || '-'}</p>
+                        <p><strong>6. Sentiu-se explorado:</strong> ${pesquisa.respostas.explorado_trabalho || '-'}</p>
+                    </div>
+                `;
+                
+                // Adiciona observações se existirem
+                if (pesquisa.respostas.observacao) {
+                    html += `
+                        <div class="detalhes-item">
+                            <h3>Observações</h3>
+                            <p>${pesquisa.respostas.observacao.replace(/\n/g, '<br>')}</p>
+                        </div>
+                    `;
+                }
+                
+                // Atualiza a página
+                document.getElementById('detalhes-conteudo').innerHTML = html;
+                document.getElementById('tabela-container').classList.add('hidden');
+                document.getElementById('detalhes-container').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Erro ao mostrar detalhes:', error);
+                alert('Erro ao carregar os detalhes desta pesquisa');
+            }
+        }
+
+        // Volta para a visualização da tabela
+        function voltarParaTabela() {
+            document.getElementById('tabela-container').classList.remove('hidden');
+            document.getElementById('detalhes-container').classList.add('hidden');
+        }
+
+        // Exclui uma pesquisa específica
+        function excluirPesquisa(index) {
+            if (confirm('Tem certeza que deseja excluir esta pesquisa?\nEsta ação não pode ser desfeita.')) {
+                try {
+                    const pesquisas = JSON.parse(localStorage.getItem('pesquisas'));
+                    pesquisas.splice(index, 1);
+                    localStorage.setItem('pesquisas', JSON.stringify(pesquisas));
+                    carregarPesquisas();
+                } catch (error) {
+                    console.error('Erro ao excluir pesquisa:', error);
+                    alert('Erro ao excluir a pesquisa');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
